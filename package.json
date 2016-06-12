@@ -1,9 +1,20 @@
 {
+  "name": "blocktree",
+  "version": "1.0.0",
+  "description": "Back to the basics, Clojure-inspired, generic text parser",
+  "main": "index.js",
   "dependencies": {
-    "escape-regexp": "0.0.1",
-    "handlebars": "4.0.5",
-    "handlebars-delimiters": "0.1.2",
-    "handlebars-helpers": "0.6.1",
-    "handlebars-lint": "0.1.0"
-  }
+    "escape-regexp": "0.0.1"
+  },
+  "scripts": {
+    "test": "make test"
+  },
+  "keywords": [
+    "generic",
+    "ast",
+    "text",
+    "transform"
+  ],
+  "author": "Matthew Mueller",
+  "license": "MIT"
 }

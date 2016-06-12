@@ -4,10 +4,14 @@
 
 let esc = require('escape-regexp')
 
+/**
+ * Export
+ */
+
 module.exports = ast
 
 /**
- * Delim Map
+ * AST
  */
 
 function ast (str, rules) {
@@ -19,6 +23,10 @@ function ast (str, rules) {
   }
 }
 
+/**
+ * Children
+ */
+
 function children (tokens) {
   let in_tag = false
   let token = null
@@ -26,67 +34,36 @@ function children (tokens) {
 
   while (tokens.length) {
     token = tokens.shift()
-    if (token.type === 'raw') {
-      ast.push({
-        type: 'text',
-        value: token.value
-      })
-    }
-
-    if (token.type === 'delim') {
-      if (token.label === 'tag_open') {
-        ast.push(tag(tokens))
-        continue
-      } else if (token.label === 'start_block_open') {
-        ast.push(block(tokens))
-      } else if (token.label === 'marker') {
-        ast.push(marker(token))
-      } else {
-        throw SyntaxError(`unexpected token "${token.value}", expected opening tag, opening block or marker`)
-      }
+    if (token.type === 'text') {
+      ast.push(text(token))
+    } else if (token.type === 'open') {
+      ast.push(block(tokens, token))
+    } else if (token.type === 'marker') {
+      ast.push(marker(token))
+    } else {
+      throw SyntaxError(`unexpected token "${token.value}", expected opening tag, opening block or marker`)
     }
   }
   return ast
 }
 
+/**
+ * Marker node
+ */
+
 function marker (token) {
-  return {
-    type: 'marker',
-    value: token.value
-  }
+  return token
 }
 
-function tag (tokens) {
-  let in_tag = true
-  let tag_token = {
-    type: 'tag',
-    value: ''
-  }
-
-  while (tokens.length) {
-    let token = tokens.shift()
-    if (token.type === 'raw') {
-      tag_token.value += token.value
-    } else if (token.type === 'delim') {
-      let closing_tag = token.label === 'tag_close'
-        || (in_tag && token.label === 'tag_open')
-      if (closing_tag) {
-        return tag_token
-      } else {
-        throw SyntaxError(`unexpected token "${token.value}", expected closing tag`)
-      }
-    } else {
-      throw SyntaxError(`unexpected token "${token.value}", expected closing tag`)
-    }
-  }
-
-  return tag_token
+function text (token) {
+  return token
 }
 
-function block (tokens) {
-  let in_start_tag = true
-  let in_end_tag = false
-  let in_block = false
+/**
+ * Block node
+ */
+
+function block (tokens, open) {
   let token = null
 
   let out = {
@@ -94,54 +71,32 @@ function block (tokens) {
     children: []
   }
 
+  if (open.params) {
+    out.open = open.params
+  }
+
   while (tokens.length) {
     token = tokens.shift()
-    if (token.type === 'raw') {
-      if (in_start_tag) {
-        out.start = token.value
-      } else if (in_end_tag) {
-        out.end = token.value
-      } else if (in_block) {
-        out.children.push({
-          type: 'text',
-          value: token.value
-        })
-      } else {
-        tokens.unshift(token)
-        return out
-      }
-    }
-
-    if (token.type === 'delim') {
-      let closing_start_tag = token.label === 'start_block_close'
-        || (in_start_tag && token.label === 'end_block_close')
-        || (in_start_tag && token.label === 'tag_open')
-      let closing_end_tag = token.label === 'end_block_close'
-        || (in_end_tag && token.label === 'start_block_close')
-        || (in_end_tag && token.label === 'tag_open')
-
-      if (closing_start_tag) {
-        in_start_tag = false
-        in_block = true
-      } else if (closing_end_tag) {
-        in_end_tag = false
-      } else if (token.label === 'end_block_open') {
-        in_block = false
-        in_end_tag = true
-      } else if (token.label === 'start_block_open') {
-        out.children.push(block(tokens))
-      } else if (token.label === 'tag_open') {
-        out.children.push(tag(tokens))
-      } else if (token.label === 'marker') {
-        out.children.push(marker(token))
-      } else {
-        throw new SyntaxError(`unexpected token "${token.value}"`)
-      }
+    if (token.type === 'text') {
+      out.children.push(text(token))
+    } else if (token.type === 'marker') {
+      out.children.push(marker(token))
+    } else if (token.type === 'open') {
+      out.children.push(block(tokens, token))
+    } else if (token.type === 'close') {
+      if (token.params) out.close = token.params
+      return out
+    } else {
+      throw new SyntaxError(`unexpected token "${token.value}"`)
     }
   }
 
   return out
 }
+
+/**
+ * Tokenizer
+ */
 
 function tokens (str, rules) {
   let match = null
@@ -150,41 +105,43 @@ function tokens (str, rules) {
   let buf = []
 
   while (str.length) {
+    let match = null
     for (let rule of rules) {
       match = str.match(rule.pattern)
       if (match) {
         if (buf.length) {
-          toks.push({ type: 'raw', value: buf.join('') })
+          toks.push({ type: 'text', value: buf.join('') })
           buf = []
         }
 
-        toks.push({ type: 'delim', label: rule.name, value: match[0] })
+        if (match.length > 1) {
+          toks.push({ type: rule.name, value: match[0], params: match.slice(1) })
+        } else {
+          toks.push({ type: rule.name, value: match[0] })
+        }
+
         str = str.slice(match[0].length)
+        break
       }
     }
 
-    buf.push(str[0])
-    str = str.slice(1)
+    if (!match) {
+      buf.push(str[0])
+      str = str.slice(1)
+    }
   }
 
+  // push the last remaining
   if (buf.length) {
-    toks.push({ type: 'raw', value: buf.join('') })
+    toks.push({ type: 'text', value: buf.join('') })
   }
-  // while (match = re.exec(str)) {
-
-
-  //   toks.push({ type: 'raw', value: str.slice(offset, match.index) })
-  //   for (let i = 0, delim; delim = delims[i]; i++) {
-  //     if (delim.value === match[0]) {
-  //       toks.push()
-  //       break
-  //     }
-  //   }
-  //   offset = match.index + match[0].length
-  // }
 
   return toks
 }
+
+/**
+ * Prepare the rules
+ */
 
 function prepare (rules) {
   return Object.keys(rules).map(function (label) {
@@ -208,26 +165,4 @@ function prepare (rules) {
       throw new Error(`rule must be either a string, regexp or an array of strings`)
     }
   })
-}
-
-/**
- * Handle the different arguments
- *
- * @param {Array} d
- * @return {Array}
- */
-
-function args (d) {
-  switch (d.length) {
-    case 1: return [d[0], d[0], d[0], d[0], d[0], d[0]]
-    case 2: return [d[0], d[1], d[0], d[1], d[0], d[1]]
-    case 3: return [d[0], d[1], d[2], d[1], d[2], d[1]]
-    case 4: return [d[0], d[1], d[2], d[3], d[2], d[3]]
-    case 5: return [d[0], d[1], d[2], d[3], d[4], d[3]]
-    default: return d
-  }
-}
-
-function desc (a, b) {
-  return b.value.length - a.value.length
 }

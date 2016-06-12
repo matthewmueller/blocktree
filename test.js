@@ -1,19 +1,20 @@
-let esc = require('escape-regexp')
-let logic = require('./index')
-let fs = require('fs')
+let Tree = require('./index')
 
-let str = fs.readFileSync(__dirname + '/the-egg.txt', 'utf8')
-// let ast = logic(str, ['__', '__', '__#', '__', '__/'])
+let str = 'a<1,2,3<hi<cool>>4>hi'
 
-let ast = logic(str, {
-  start_block_open: '__#',
-  end_block_open: '__/',
-  tag_open: '__',
-  marker: '---',
-  start_block_close: '__',
-  end_block_close: '__',
-  tag_close: '__'
+let ast = Tree(str, {
+  marker: ',',
+  open: '<',
+  close: '>',
 })
 
+console.dir(ast, { colors: true, depth: Infinity })
+
+let html = '<h2>hi<u>ok</u></h2>'
+ast = Tree(html, {
+  marker: /<(\w+)\/>/,
+  open: /<(\w+)>/,
+  close: /<\/(\w+)>/,
+})
 
 console.dir(ast, { colors: true, depth: Infinity })
