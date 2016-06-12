@@ -5,9 +5,10 @@ Back to the basics, Hickey-inspired, generic text parser that spits out an [Abst
 ## Example
 
 ```js
+let parse = require('blocktree')
 let str = 'a<1,2,3<hi<cool>>4>hi'
 
-let ast = Tree(str, {
+let ast = parse(str, {
   marker: ',',
   open: '<',
   close: '>',
@@ -28,21 +29,27 @@ let ast = Tree(str, {
 }
 ```
 
+## Installation
+
+```js
+npm install blocktree
+```
+
 ## Concepts
 
-All text operations can be boiled down to 2 concepts: **markers** & **blocks**. Here's some examples:
+All languages can be boiled down to 2 concepts: **markers** & **blocks**. Here's some examples:
 
-- If you want to insert some text, you'd insert at a **marker**
-- If you want to delete some text, you'd delete a **block**
-- If you want to update or replace some text, you'd swap out a **block**
+- Loops, conditionals are all just **blocks**
+- Variables, Binary operators are just **markers**
+- Arrays and objects are just a group of **markers**
 
 Another analogy you can draw is where your cursor is in a document is a **marker** and when you make a selection, that's a **block**.
 
 Given **markers** and **blocks**, you can implement pretty much anything.
 
-Here's HTML:
+Here's a basic HTML parser:
 
-```
+```js
 let html = '<h2>hi<u>ok</u></h2>'
 ast = Tree(html, {
   marker: /<(\w+)\/>/,
@@ -50,3 +57,5 @@ ast = Tree(html, {
   close: /<\/(\w+)>/,
 })
 ```
+
+For complex languages, you may want a more expressive AST, but for DSLs and micro-languages, this is a nice constraint.

@@ -55,6 +55,10 @@ function marker (token) {
   return token
 }
 
+/**
+ * Text node
+ */
+
 function text (token) {
   return token
 }
