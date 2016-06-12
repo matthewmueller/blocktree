@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "escape-regexp": "0.0.1",
+    "handlebars": "4.0.5",
+    "handlebars-delimiters": "0.1.2",
+    "handlebars-helpers": "0.6.1",
+    "handlebars-lint": "0.1.0"
+  }
+}
